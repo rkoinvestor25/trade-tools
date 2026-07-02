@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Position Viewer</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #f1f5f9;
+  --surface: #ffffff;
+  --border:  #e2e8f0;
+  --text:    #0f172a;
+  --muted:   #64748b;
+  --mono:    'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  --c-tp:    #16a34a;
+  --c-sl:    #dc2626;
+  --c-mc:    #7c3aed;
+  --c-canc:  #64748b;
+  --c-unk:   #b45309;
+  --row-tp:   #f0fdf4;
+  --row-sl:   #fef2f2;
+  --row-mc:   #f5f3ff;
+  --row-canc: #f8fafc;
+  --row-unk:  #fefce8;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  min-height: 100vh;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────── */
+.topbar {
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 0 20px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.topbar-logo { font-size: 14px; font-weight: 700; letter-spacing: -.3px; white-space: nowrap; }
+.topbar-sep  { width: 1px; height: 18px; background: #334155; flex-shrink: 0; }
+.topbar-info { font-size: 11px; color: #94a3b8; flex: 1; min-width: 0;
+               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-btn  {
+  margin-left: auto;
+  padding: 5px 12px;
+  background: #1e40af;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.topbar-btn:hover { background: #1d4ed8; }
+#fileInput { display: none; }
+
+/* ── Upload ──────────────────────────────────────────────────────── */
+#uploadSection {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 44px);
+}
+.drop-zone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 56px 64px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface);
+  transition: border-color .15s, background .15s;
+  max-width: 440px;
+  width: 90%;
+}
+.drop-zone:hover, .drop-zone.over { border-color: #1e40af; background: #eff6ff; }
+.drop-icon  { font-size: 36px; margin-bottom: 14px; }
+.drop-title { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+.drop-sub   { font-size: 12px; color: var(--muted); }
+
+/* ── Content ─────────────────────────────────────────────────────── */
+#mainSection { padding: 14px 18px; }
+
+/* ── Stats strip ─────────────────────────────────────────────────── */
+.stats-strip { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+.stat-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.sc-total { background: #f1f5f9; border-color: #cbd5e1; color: #0f172a; }
+.sc-tp    { background: #dcfce7; border-color: #86efac; color: var(--c-tp); }
+.sc-sl    { background: #fee2e2; border-color: #fca5a5; color: var(--c-sl); }
+.sc-mc    { background: #ede9fe; border-color: #c4b5fd; color: var(--c-mc); }
+.sc-canc  { background: #f1f5f9; border-color: #cbd5e1; color: var(--c-canc); }
+.sc-unk   { background: #fef9c3; border-color: #fde047; color: var(--c-unk); }
+
+/* ── Filters ─────────────────────────────────────────────────────── */
+.filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+.filter-sep { width: 1px; height: 22px; background: var(--border); }
+.fbtn {
+  padding: 3px 11px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+  transition: all .1s;
+}
+.fbtn:hover { border-color: #94a3b8; }
+.fbtn.active          { background: #0f172a; color: #fff; border-color: #0f172a; }
+.fbtn.f-tp.active     { background: var(--c-tp);   border-color: var(--c-tp);   color: #fff; }
+.fbtn.f-sl.active     { background: var(--c-sl);   border-color: var(--c-sl);   color: #fff; }
+.fbtn.f-mc.active     { background: var(--c-mc);   border-color: var(--c-mc);   color: #fff; }
+.fbtn.f-canc.active   { background: var(--c-canc); border-color: var(--c-canc); color: #fff; }
+.fbtn.f-unk.active    { background: var(--c-unk);  border-color: var(--c-unk);  color: #fff; }
+
+/* ── Table ───────────────────────────────────────────────────────── */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+
+thead th {
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+  padding: 7px 10px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--muted);
+  user-select: none;
+}
+thead th.sortable       { cursor: pointer; }
+thead th.sortable:hover { color: var(--text); }
+thead th.asc::after     { content: ' ↑'; }
+thead th.desc::after    { content: ' ↓'; }
+
+/* Column group dividers */
+thead th.grp-start { border-left: 2px solid #e2e8f0; }
+tbody  td.grp-start { border-left: 2px solid #f1f5f9; }
+
+/* Hidden "detail" columns — shown only when table has .show-extra */
+th.col-extra, td.col-extra { display: none; }
+table.show-extra th.col-extra,
+table.show-extra td.col-extra { display: table-cell; }
+
+tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr:last-child  { border-bottom: none; }
+tbody tr:hover       { filter: brightness(.97); }
+tbody tr.row-tp      { background: var(--row-tp); }
+tbody tr.row-sl      { background: var(--row-sl); }
+tbody tr.row-mc      { background: var(--row-mc); }
+tbody tr.row-canc    { background: var(--row-canc); }
+tbody tr.row-unk     { background: var(--row-unk); }
+
+td { padding: 6px 10px; vertical-align: middle; }
+
+/* ── Cell types ──────────────────────────────────────────────────── */
+.c-date { font-weight: 500; }
+.c-time { color: var(--muted); }
+.c-sym  { font-weight: 600; }
+.c-dim  { font-size: 10px; color: var(--muted); }
+
+/* Badges */
+.badge  {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: 700; white-space: nowrap;
+}
+.b-long  { background: #dcfce7; color: #15803d; }   /* green — Long */
+.b-short { background: #ffe4e6; color: #be123c; }   /* red   — Short */
+.b-tp    { background: #dcfce7; color: var(--c-tp); }
+.b-sl    { background: #fee2e2; color: var(--c-sl); }
+.b-mc    { background: #ede9fe; color: var(--c-mc); }
+.b-canc  { background: #f1f5f9; color: var(--c-canc); }
+.b-unk   { background: #fef9c3; color: var(--c-unk); }
+
+/* Numeric / monospace cells */
+td.num  { font-family: var(--mono); font-size: 11px; text-align: right; }
+td.tmcl { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+/* Entry type label */
+.etype  { font-size: 10px; color: var(--muted); }
+
+.note-icon { cursor: help; font-size: 13px; }
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+.tbl-empty { padding: 36px; text-align: center; color: var(--muted); }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-logo">TV Positions</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-info" id="topbarInfo">Drop or open a TradingView order history export</span>
+  <button class="topbar-btn hidden" id="reloadBtn"
+          onclick="document.getElementById('fileInput').click()">Load file…</button>
+  <input type="file" id="fileInput" accept=".txt,.csv">
+</div>
+
+<div id="uploadSection">
+  <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+    <div class="drop-icon">📂</div>
+    <div class="drop-title">Drop order-history.txt here</div>
+    <div class="drop-sub">or click to browse · TradingView order history export</div>
+  </div>
+</div>
+
+<div id="mainSection" class="hidden">
+  <div class="stats-strip" id="statsStrip"></div>
+
+  <div class="filter-bar">
+    <div class="filter-group" id="fOutcome">
+      <button class="fbtn active" data-v="all">All</button>
+      <button class="fbtn f-tp"   data-v="TP_HIT">TP Hit</button>
+      <button class="fbtn f-sl"   data-v="SL_HIT">SL Hit</button>
+      <button class="fbtn f-mc"   data-v="MANUAL_CLOSE">Manual Close</button>
+      <button class="fbtn f-canc" data-v="CANCELLED">Cancelled</button>
+      <button class="fbtn f-unk"  data-v="UNKNOWN">Unknown</button>
+    </div>
+    <div class="filter-sep"></div>
+    <div class="filter-group" id="fDir">
+      <button class="fbtn active" data-v="all">All</button>
+      <button class="fbtn"        data-v="Long">Long</button>
+      <button class="fbtn"        data-v="Short">Short</button>
+    </div>
+    <div class="filter-sep"></div>
+    <button class="fbtn" id="toggleCanc">Hide cancelled</button>
+    <div class="filter-sep"></div>
+    <button class="fbtn" id="toggleExtra">Show details</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th class="sortable" data-col="placingTime">Date</th>
+          <th>Time</th>
+          <th>Symbol</th>
+          <th>Dir</th>
+          <!-- Entry group -->
+          <th class="grp-start">Entry Type</th>
+          <th>Entry Place</th>
+          <th>Entry Fill</th>
+          <th>Entry Time</th>
+          <!-- SL group -->
+          <th class="grp-start">SL Place</th>
+          <th>SL Fill</th>
+          <th>SL Time</th>
+          <!-- TP group -->
+          <th class="grp-start">TP Place</th>
+          <th>TP Fill</th>
+          <th>TP Time</th>
+          <!-- Manual close group -->
+          <th class="grp-start">Close Fill</th>
+          <th>Close Time</th>
+          <!-- Result -->
+          <th class="grp-start">Outcome</th>
+          <th></th>
+          <!-- Detail columns — hidden by default -->
+          <th class="col-extra grp-start">Broker</th>
+          <th class="col-extra sortable" data-col="quantity">Qty</th>
+          <th class="col-extra">Leverage</th>
+          <th class="col-extra">Margin</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="tbl-empty hidden" id="tblEmpty">No positions match the current filter.</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// PARSER
+// ═══════════════════════════════════════════════════════════════════
+
+function csvLine(line) {
+  const out = []; let cur = '', q = false;
+  for (const ch of line) {
+    if (ch === '"') q = !q;
+    else if (ch === ',' && !q) { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out;
+}
+
+const toNum = s => { const v = parseFloat((s||'').replace(/,/g,'')); return isNaN(v) ? null : v; };
+const toDT  = s => s ? new Date(s.trim().replace(' ','T')) : null;
+const toStr = s => (s||'').trim().replace(/^"|"$/g,'') || null;
+
+function parseOrders(text) {
+  const out = [];
+  for (const raw of text.split(/\r?\n/).slice(1)) {
+    const l = raw.trim(); if (!l) continue;
+    const c = csvLine(l).concat(Array(14).fill('')).slice(0,14);
+    const qty = toNum(c[3]); if (!qty) continue;
+    const o = {
+      symbol:      c[0].trim(),
+      side:        c[1].trim(),
+      orderType:   c[2].trim(),
+      quantity:    qty,
+      limitPrice:  toNum(c[4]),
+      stopPrice:   toNum(c[5]),
+      fillPrice:   toNum(c[6]),
+      status:      c[7].trim(),
+      placingTime: toDT(c[9]),
+      closingTime: toDT(c[10]),
+      orderId:     c[11].trim(),
+      leverage:    toStr(c[12]),
+      margin:      toStr(c[13]),
+    };
+    o.broker     = o.symbol.includes(':') ? o.symbol.split(':')[0] : '';
+    o.ticker     = o.symbol.split(':').pop();
+    o.orderPrice = o.stopPrice ?? o.limitPrice;
+    out.push(o);
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ENTRY DETECTION CASCADE
+// ═══════════════════════════════════════════════════════════════════
+
+const mMinority = cands => {
+  const cnt = {};
+  cands.forEach(o => cnt[o.side] = (cnt[o.side]||0)+1);
+  if (Object.keys(cnt).length < 2) return [];
+  const mn = Math.min(...Object.values(cnt));
+  const res = cands.filter(o => cnt[o.side] === mn);
+  return res.length < cands.length ? res : [];
+};
+const mMarket     = cands => cands.filter(o => o.orderType === 'Market');
+const mLowestId   = cands => {
+  try {
+    const mn = Math.min(...cands.map(o => parseInt(o.orderId)));
+    const res = cands.filter(o => parseInt(o.orderId) === mn);
+    return res.length < cands.length ? res : [];
+  } catch { return []; }
+};
+const mLeverage   = cands => cands.filter(o => o.leverage);
+const mEarliestFill = cands => {
+  const filled = cands.filter(o => o.status === 'Filled' && o.closingTime);
+  if (!filled.length) return [];
+  const mn = Math.min(...filled.map(o => +o.closingTime));
+  const res = filled.filter(o => +o.closingTime <= mn + 999);
+  return res.length < cands.length ? res : [];
+};
+const mMargin = cands => cands.filter(o => o.margin);
+
+const METHODS = [
+  ['minority_side',   mMinority],
+  ['market_type',     mMarket],
+  ['lowest_order_id', mLowestId],
+  ['leverage_field',  mLeverage],
+  ['earliest_fill',   mEarliestFill],
+  ['margin_field',    mMargin],
+];
+
+function identifyEntry(orders) {
+  let cands = [...orders];
+  const trail = [];
+  for (const [name, fn] of METHODS) {
+    const n = fn(cands);
+    if (!n.length) continue;
+    if (n.length < cands.length) { cands = n; trail.push(name); }
+    if (cands.length === 1) return { entry: cands[0], trail };
+  }
+  return { entry: cands.length === 1 ? cands[0] : null, trail };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SL / TP CLASSIFICATION
+// ═══════════════════════════════════════════════════════════════════
+
+function classifyOthers(entry, others) {
+  const xs = entry.side === 'Buy' ? 'Sell' : 'Buy';
+  let sl = null, tp = null;
+  const unknown = [];
+  for (const o of others) {
+    if      (o.side === xs && o.orderType === 'Stop')  sl === null ? (sl = o) : unknown.push(o);
+    else if (o.side === xs && o.orderType === 'Limit') tp === null ? (tp = o) : unknown.push(o);
+    else unknown.push(o);
+  }
+  return { sl, tp, unknown };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GROUPER
+// ═══════════════════════════════════════════════════════════════════
+
+const PROX_MS = 120_000;
+
+function groupPositions(orders) {
+  const groups = new Map();
+  for (const o of orders) {
+    const k = `${o.symbol}|${o.quantity}|${+o.placingTime}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(o);
+  }
+  const positions = [], orphE = [], orphO = [];
+
+  for (const grp of groups.values()) {
+    const { entry, trail } = identifyEntry(grp);
+    if (!entry) { orphO.push(...grp); continue; }
+    const others = grp.filter(o => o !== entry);
+    const { sl, tp, unknown } = classifyOthers(entry, others);
+    if (!sl && !tp) { orphE.push({ entry, trail }); orphO.push(...others); continue; }
+    positions.push(buildPos(entry, sl, tp, 'exact', trail, unknown));
+  }
+
+  const usedIds = new Set();
+  orphE.sort((a,b) => +a.entry.placingTime - +b.entry.placingTime);
+  for (const { entry, trail } of orphE) {
+    const t0 = +entry.placingTime;
+    const cands = orphO.filter(o =>
+      o.symbol === entry.symbol && o.quantity === entry.quantity &&
+      +o.placingTime >= t0 && +o.placingTime <= t0 + PROX_MS &&
+      !usedIds.has(o.orderId)
+    );
+    const { sl, tp, unknown } = classifyOthers(entry, cands);
+    positions.push(buildPos(entry, sl, tp, cands.length ? 'proximity' : 'partial', trail, unknown));
+    [sl, tp, ...unknown].forEach(o => o && usedIds.add(o.orderId));
+  }
+
+  for (const o of orphO)
+    if (!usedIds.has(o.orderId)) positions.push(buildUnmatched(o));
+
+  return findManualCloses(positions).sort((a,b) => +b.placingTime - +a.placingTime);
+}
+
+const legOf = o => o ? {
+  side: o.side, orderType: o.orderType,
+  orderPrice: o.orderPrice, fillPrice: o.fillPrice,
+  fillTime: o.status === 'Filled' ? o.closingTime : null,
+  status: o.status,
+} : null;
+
+const calcOutcome = (entry, sl, tp) => {
+  if (!entry || entry.status !== 'Filled') return 'CANCELLED';
+  if (tp?.status === 'Filled') return 'TP_HIT';
+  if (sl?.status === 'Filled') return 'SL_HIT';
+  return 'UNKNOWN';
+};
+
+function buildPos(entry, sl, tp, reconstruction, trail, unknown) {
+  const notes = [];
+  const missing = [!sl && 'SL', !tp && 'TP'].filter(Boolean);
+  if (missing.length) notes.push(`Missing ${missing.join(', ')}`);
+  if (trail.length > 1 || (trail[0] && trail[0] !== 'minority_side'))
+    notes.push(`entry via ${trail.join(' → ')}`);
+  if (unknown.length)
+    notes.push(`Unclassified: ${unknown.map(o=>`${o.side} ${o.orderType}`).join(', ')}`);
+  return {
+    symbol: entry.ticker, broker: entry.broker,
+    direction: entry.side === 'Buy' ? 'Long' : 'Short',
+    quantity: entry.quantity, leverage: entry.leverage, margin: entry.margin,
+    placingTime: entry.placingTime,
+    entry: legOf(entry), sl: legOf(sl), tp: legOf(tp), close: null,
+    outcome: calcOutcome(entry, sl, tp),
+    reconstruction, notes: notes.join(' | '),
+  };
+}
+
+function buildUnmatched(o) {
+  return {
+    symbol: o.ticker, broker: o.broker, direction: 'Unknown',
+    quantity: o.quantity, leverage: null, margin: null,
+    placingTime: o.placingTime,
+    entry: null, sl: null, tp: null, close: null,
+    outcome: 'UNKNOWN', reconstruction: 'unmatched',
+    notes: `Unmatched: ${o.side} ${o.orderType} @ ${o.orderPrice ?? o.fillPrice} (${o.status})`,
+  };
+}
+
+function findManualCloses(positions) {
+  const closePool = positions.filter(p =>
+    p.reconstruction === 'partial' && p.outcome === 'UNKNOWN' &&
+    p.entry?.fillPrice != null && !p.sl && !p.tp
+  );
+  const closePoolIds = new Set(closePool.map(p => p));
+
+  const openUnknowns = positions.filter(p =>
+    p.outcome === 'UNKNOWN' && p.entry?.fillPrice != null && !closePoolIds.has(p)
+  );
+
+  const consumed = new Set();
+
+  for (const pos of openUnknowns) {
+    const closeSide = pos.direction === 'Short' ? 'Buy' : 'Sell';
+    const entryFill = pos.entry.fillTime;
+    if (!entryFill) continue;
+
+    const match = closePool
+      .filter(c =>
+        !consumed.has(c) &&
+        c.symbol === pos.symbol &&
+        c.quantity === pos.quantity &&
+        c.entry.side === closeSide &&
+        c.entry.fillTime != null &&
+        +c.entry.fillTime >= +entryFill
+      )
+      .sort((a, b) => +a.entry.fillTime - +b.entry.fillTime)[0];
+
+    if (!match) continue;
+    consumed.add(match);
+    pos.close   = match.entry;
+    pos.outcome = 'MANUAL_CLOSE';
+  }
+
+  return positions.filter(p => !consumed.has(p));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FORMATTING
+// ═══════════════════════════════════════════════════════════════════
+
+function fmtP(p) {
+  if (p == null) return null;
+  const s = parseFloat(p.toPrecision(6)).toString();
+  return s.includes('e') ? p.toFixed(8).replace(/\.?0+$/,'') : s;
+}
+
+function fmtQty(q) {
+  if (q >= 1e6) return (q/1e6).toFixed(1)+'M';
+  if (q >= 1e3) return (q/1e3).toFixed(q>=100000?0:1)+'K';
+  return String(q);
+}
+
+function fmtDate(dt) {
+  if (!dt) return { date:'', time:'' };
+  const z = n => String(n).padStart(2,'0');
+  return {
+    date: `${dt.getFullYear()}-${z(dt.getMonth()+1)}-${z(dt.getDate())}`,
+    time: `${z(dt.getHours())}:${z(dt.getMinutes())}`,
+  };
+}
+
+function fmtTime(dt) {
+  if (!dt) return null;
+  const z = n => String(n).padStart(2,'0');
+  return `${z(dt.getHours())}:${z(dt.getMinutes())}:${z(dt.getSeconds())}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER HELPERS — empty cell when no value
+// ═══════════════════════════════════════════════════════════════════
+
+// Returns a right-aligned monospace td, or an empty td when val is null.
+function numTd(val, extra) {
+  const cls = (extra || '') + (val != null ? ' num' : '');
+  return `<td class="${cls.trim()}">${val != null ? val : ''}</td>`;
+}
+
+// Returns a muted time td, or an empty td when fill time is absent.
+function timeTd(fillTime, extra) {
+  const cls = (extra || '') + (fillTime ? ' tmcl' : '');
+  return `<td class="${cls.trim()}">${fillTime ? fmtTime(fillTime) : ''}</td>`;
+}
+
+// Returns the entry-type td (e.g. "Buy Stop"), or empty.
+function typeTd(lg, extra) {
+  const cls = (extra || '');
+  if (!lg) return `<td class="${cls.trim()}"></td>`;
+  return `<td class="${cls.trim()}"><span class="etype">${lg.side} ${lg.orderType}</span></td>`;
+}
+
+const ROW_CLS   = { TP_HIT:'row-tp', SL_HIT:'row-sl', MANUAL_CLOSE:'row-mc', CANCELLED:'row-canc', UNKNOWN:'row-unk' };
+const OUT_BADGE = {
+  TP_HIT:       '<span class="badge b-tp">TP Hit</span>',
+  SL_HIT:       '<span class="badge b-sl">SL Hit</span>',
+  MANUAL_CLOSE: '<span class="badge b-mc">Manual Close</span>',
+  CANCELLED:    '<span class="badge b-canc">Cancelled</span>',
+  UNKNOWN:      '<span class="badge b-unk">Unknown</span>',
+};
+const DIR_BADGE = {
+  Long:  '<span class="badge b-long">Long ▲</span>',
+  Short: '<span class="badge b-short">Short ▼</span>',
+};
+
+function renderRow(p) {
+  const { date, time } = fmtDate(p.placingTime);
+  const e = p.entry, sl = p.sl, tp = p.tp, cl = p.close;
+  const noteHtml = p.notes
+    ? `<td><span class="note-icon" title="${p.notes.replace(/"/g,'&quot;')}">⚠️</span></td>`
+    : '<td></td>';
+
+  return `<tr class="${ROW_CLS[p.outcome]||''}" data-outcome="${p.outcome}" data-dir="${p.direction}">
+    <td class="c-date">${date}</td>
+    <td class="c-time">${time}</td>
+    <td class="c-sym">${p.symbol}</td>
+    <td>${DIR_BADGE[p.direction] || ''}</td>
+    ${typeTd(e, 'grp-start')}
+    ${numTd(fmtP(e?.orderPrice))}
+    ${numTd(fmtP(e?.fillPrice))}
+    ${timeTd(e?.fillTime)}
+    ${numTd(fmtP(sl?.orderPrice), 'grp-start')}
+    ${numTd(fmtP(sl?.fillPrice))}
+    ${timeTd(sl?.fillTime)}
+    ${numTd(fmtP(tp?.orderPrice), 'grp-start')}
+    ${numTd(fmtP(tp?.fillPrice))}
+    ${timeTd(tp?.fillTime)}
+    ${numTd(fmtP(cl?.fillPrice), 'grp-start')}
+    ${timeTd(cl?.fillTime)}
+    <td class="grp-start">${OUT_BADGE[p.outcome] || ''}</td>
+    ${noteHtml}
+    <td class="col-extra grp-start c-dim">${p.broker}</td>
+    <td class="col-extra num">${p.quantity != null ? fmtQty(p.quantity) : ''}</td>
+    <td class="col-extra c-dim">${p.leverage || ''}</td>
+    <td class="col-extra c-dim">${p.margin   || ''}</td>
+  </tr>`;
+}
+
+function renderStats(positions) {
+  const tp   = positions.filter(p => p.outcome === 'TP_HIT').length;
+  const sl   = positions.filter(p => p.outcome === 'SL_HIT').length;
+  const mc   = positions.filter(p => p.outcome === 'MANUAL_CLOSE').length;
+  const canc = positions.filter(p => p.outcome === 'CANCELLED').length;
+  const unk  = positions.filter(p => p.outcome === 'UNKNOWN').length;
+  const chips = [
+    `<span class="stat-chip sc-total">${positions.length} Total</span>`,
+    `<span class="stat-chip sc-tp">${tp} TP Hit</span>`,
+    `<span class="stat-chip sc-sl">${sl} SL Hit</span>`,
+    mc   ? `<span class="stat-chip sc-mc">${mc} Manual Close</span>`   : '',
+    `<span class="stat-chip sc-canc">${canc} Cancelled</span>`,
+    unk  ? `<span class="stat-chip sc-unk">${unk} Unknown</span>`      : '',
+  ];
+  document.getElementById('statsStrip').innerHTML = chips.filter(Boolean).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILTER + SORT + DETAILS TOGGLE
+// ═══════════════════════════════════════════════════════════════════
+
+let allPos = [], fOut = 'all', fDir = 'all', hideCanc = false, sortCol = 'placingTime', sortAsc = false;
+
+function redraw() {
+  const rows = allPos
+    .filter(p =>
+      (fOut === 'all' || p.outcome === fOut) &&
+      (fDir === 'all' || p.direction === fDir) &&
+      (!hideCanc || p.outcome !== 'CANCELLED')
+    )
+    .sort((a, b) => {
+      let va = sortCol === 'placingTime' ? +a.placingTime : a[sortCol];
+      let vb = sortCol === 'placingTime' ? +b.placingTime : b[sortCol];
+      va ??= 0; vb ??= 0;
+      return sortAsc ? (va > vb ? 1 : va < vb ? -1 : 0)
+                     : (va < vb ? 1 : va > vb ? -1 : 0);
+    });
+
+  document.getElementById('tbody').innerHTML = rows.map(renderRow).join('');
+  document.getElementById('tblEmpty').classList.toggle('hidden', rows.length > 0);
+}
+
+function setupFilters() {
+  ['fOutcome','fDir'].forEach((id, i) => {
+    document.getElementById(id).addEventListener('click', e => {
+      const btn = e.target.closest('[data-v]'); if (!btn) return;
+      if (i === 0) fOut = btn.dataset.v; else fDir = btn.dataset.v;
+      document.querySelectorAll(`#${id} [data-v]`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      redraw();
+    });
+  });
+
+  document.querySelectorAll('th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      sortAsc = (sortCol === col) ? !sortAsc : false;
+      sortCol = col;
+      document.querySelectorAll('th').forEach(h => h.classList.remove('asc','desc'));
+      th.classList.add(sortAsc ? 'asc' : 'desc');
+      redraw();
+    });
+  });
+
+  const cancBtn = document.getElementById('toggleCanc');
+  cancBtn.addEventListener('click', () => {
+    hideCanc = !hideCanc;
+    cancBtn.classList.toggle('active', hideCanc);
+    // If user activates "Hide cancelled" while "Cancelled" outcome is selected, reset to All
+    if (hideCanc && fOut === 'CANCELLED') {
+      fOut = 'all';
+      document.querySelectorAll('#fOutcome [data-v]').forEach(b => b.classList.remove('active'));
+      document.querySelector('#fOutcome [data-v="all"]').classList.add('active');
+    }
+    redraw();
+  });
+
+  const toggleBtn = document.getElementById('toggleExtra');
+  toggleBtn.addEventListener('click', () => {
+    const tbl = document.getElementById('tbl');
+    const on  = tbl.classList.toggle('show-extra');
+    toggleBtn.textContent = on ? 'Hide details' : 'Show details';
+    toggleBtn.classList.toggle('active', on);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE LOADING
+// ═══════════════════════════════════════════════════════════════════
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const orders = parseOrders(e.target.result);
+    allPos = groupPositions(orders);
+    renderStats(allPos);
+    document.getElementById('topbarInfo').textContent =
+      `${file.name}  ·  ${orders.length} orders  ·  ${allPos.length} positions`;
+    document.getElementById('uploadSection').classList.add('hidden');
+    document.getElementById('mainSection').classList.remove('hidden');
+    document.getElementById('reloadBtn').classList.remove('hidden');
+    fOut = 'all'; fDir = 'all'; hideCanc = false; sortCol = 'placingTime'; sortAsc = false;
+    document.getElementById('toggleCanc').classList.remove('active');
+    document.querySelectorAll('#fOutcome [data-v], #fDir [data-v]')
+            .forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('[data-v="all"]').forEach(b => b.classList.add('active'));
+    document.querySelectorAll('th').forEach(h => h.classList.remove('asc','desc'));
+    document.querySelector('th[data-col="placingTime"]').classList.add('desc');
+    // Reset details toggle
+    document.getElementById('tbl').classList.remove('show-extra');
+    document.getElementById('toggleExtra').textContent = 'Show details';
+    document.getElementById('toggleExtra').classList.remove('active');
+    redraw();
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+  e.target.value = '';
+});
+
+const zone = document.getElementById('dropZone');
+document.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('over'); });
+document.addEventListener('dragleave', e => { if (!e.relatedTarget) zone.classList.remove('over'); });
+document.addEventListener('drop', e => {
+  e.preventDefault(); zone.classList.remove('over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+setupFilters();
+</script>
+</body>
+</html>
