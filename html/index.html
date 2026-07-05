@@ -570,19 +570,16 @@ function fmtTime(dt) {
 // RENDER HELPERS — empty cell when no value
 // ═══════════════════════════════════════════════════════════════════
 
-// Returns a right-aligned monospace td, or an empty td when val is null.
 function numTd(val, extra) {
   const cls = (extra || '') + (val != null ? ' num' : '');
   return `<td class="${cls.trim()}">${val != null ? val : ''}</td>`;
 }
 
-// Returns a muted time td, or an empty td when fill time is absent.
 function timeTd(fillTime, extra) {
   const cls = (extra || '') + (fillTime ? ' tmcl' : '');
   return `<td class="${cls.trim()}">${fillTime ? fmtTime(fillTime) : ''}</td>`;
 }
 
-// Returns the entry-type td (e.g. "Buy Stop"), or empty.
 function typeTd(lg, extra) {
   const cls = (extra || '');
   if (!lg) return `<td class="${cls.trim()}"></td>`;
@@ -703,7 +700,6 @@ function setupFilters() {
   cancBtn.addEventListener('click', () => {
     hideCanc = !hideCanc;
     cancBtn.classList.toggle('active', hideCanc);
-    // If user activates "Hide cancelled" while "Cancelled" outcome is selected, reset to All
     if (hideCanc && fOut === 'CANCELLED') {
       fOut = 'all';
       document.querySelectorAll('#fOutcome [data-v]').forEach(b => b.classList.remove('active'));
@@ -743,7 +739,6 @@ function loadFile(file) {
     document.querySelectorAll('[data-v="all"]').forEach(b => b.classList.add('active'));
     document.querySelectorAll('th').forEach(h => h.classList.remove('asc','desc'));
     document.querySelector('th[data-col="placingTime"]').classList.add('desc');
-    // Reset details toggle
     document.getElementById('tbl').classList.remove('show-extra');
     document.getElementById('toggleExtra').textContent = 'Show details';
     document.getElementById('toggleExtra').classList.remove('active');

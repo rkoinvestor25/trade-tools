@@ -15,8 +15,8 @@ python main.py samples/order-history.txt -f json             # JSON to stdout
 python main.py samples/order-history.txt -f csv -o out.csv   # CSV to file
 ```
 
-Open `viewer.html` in any browser — drag-and-drop the raw `.txt` export to
-visualise positions without running Python.
+Run `docker compose up -d` from the repo root and open `http://localhost:8080` —
+drag-and-drop the raw `.txt` export to visualise positions without running Python.
 
 ---
 
@@ -33,7 +33,9 @@ tv-to-csv/
     __init__.py            plugin registry + BaseExporter ABC
     csv_exporter.py        @register('csv')
     json_exporter.py       @register('json')
-  viewer.html              self-contained browser viewer (no server needed)
+../html/
+  index.html               self-contained browser viewer (served via nginx)
+../docker-compose.yml      spins up nginx:alpine on localhost:8080
 ```
 
 ---
@@ -135,9 +137,18 @@ Add `import exporters.my_format` to `main.py`.  No other changes needed.
 
 ## Browser viewer
 
-`viewer.html` is fully self-contained (no external dependencies, no server).
+`html/index.html` is fully self-contained (no external dependencies).
 It contains a JavaScript port of the complete parser and grouper logic.
 Drop the raw TradingView export onto the page to see positions in a table.
+
+Serve it locally with Docker:
+
+```
+docker compose up -d   # starts nginx:alpine at http://localhost:8080
+docker compose down    # stop
+```
+
+Requires an external Docker network named `proxy-net` (`docker network create proxy-net`).
 
 Features:
 - Filter by outcome and direction
