@@ -166,7 +166,7 @@ th.col-extra, td.col-extra { display: none; }
 table.show-extra th.col-extra,
 table.show-extra td.col-extra { display: table-cell; }
 
-tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; }
 tbody tr:last-child  { border-bottom: none; }
 tbody tr:hover       { filter: brightness(.97); }
 tbody tr.row-tp      { background: var(--row-tp); }
@@ -174,6 +174,7 @@ tbody tr.row-sl      { background: var(--row-sl); }
 tbody tr.row-mc      { background: var(--row-mc); }
 tbody tr.row-canc    { background: var(--row-canc); }
 tbody tr.row-unk     { background: var(--row-unk); }
+tbody tr.row-selected { outline: 2px solid #2563eb; outline-offset: -2px; }
 
 td { padding: 6px 10px; vertical-align: middle; }
 
@@ -714,6 +715,13 @@ function setupFilters() {
     const on  = tbl.classList.toggle('show-extra');
     toggleBtn.textContent = on ? 'Hide details' : 'Show details';
     toggleBtn.classList.toggle('active', on);
+  });
+
+  document.getElementById('tbody').addEventListener('click', e => {
+    const row = e.target.closest('tr'); if (!row) return;
+    const wasSelected = row.classList.contains('row-selected');
+    document.querySelectorAll('#tbody tr.row-selected').forEach(r => r.classList.remove('row-selected'));
+    if (!wasSelected) row.classList.add('row-selected');
   });
 }
 

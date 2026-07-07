@@ -156,6 +156,7 @@ Features:
 - Show/hide detail columns (broker, quantity, leverage, margin)
 - Sortable Date and Qty columns
 - Purple row tint and "Manual Close" badge for 4-order positions
+- Click a row to highlight it with a blue outline (click again, or click another row, to move/clear it) — handy for tracking which position you're currently journaling
 
 ---
 
