@@ -136,7 +136,8 @@ body {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow-x: auto;
+  overflow: auto;
+  max-height: calc(100vh - 160px);
 }
 table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
 
@@ -151,6 +152,9 @@ thead th {
   letter-spacing: .05em;
   color: var(--muted);
   user-select: none;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 thead th.sortable       { cursor: pointer; }
 thead th.sortable:hover { color: var(--text); }

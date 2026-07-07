@@ -157,6 +157,7 @@ Features:
 - Sortable Date and Qty columns
 - Purple row tint and "Manual Close" badge for 4-order positions
 - Click a row to highlight it with a blue outline (click again, or click another row, to move/clear it) — handy for tracking which position you're currently journaling
+- Fixed table header: the table body scrolls in its own bounded box (`max-height` under the topbar/filters) so the header row stays visible
 
 ---
 
